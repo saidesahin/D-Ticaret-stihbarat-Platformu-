@@ -1,0 +1,9 @@
+# Gizli anahtarlar ve ortam değişkenleri
+.env
+*.env
+
+# Diğer dosyalar
+__pycache__/
+venv/
+node_modules/
+.DS_Store

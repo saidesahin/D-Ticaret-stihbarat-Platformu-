@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Yetkili Mail Bulma | Dis Ticaret Istihbarat</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body class="app">
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="app-main">
+    <header class="topbar">
+      <h1 class="page-title">Yetkili Mail Bulma</h1>
+      <p class="page-desc">Bir firmanin web sitesini tarayarak yetkili ve genel e-posta adreslerini tespit edin.</p>
+    </header>
+    <main class="content">
+      <div class="card">
+        <label>Firma web sitesi (orn: https://ornekfirma.com)</label>
+        <input id="website_url" placeholder="https://ornekfirma.com">
+
+        <button class="btn btn-primary" style="margin-top:1.2rem;" onclick="taramaBaslat()">Tara</button>
+        <div id="durum" class="status-line"></div>
+        <div id="sonuclar"></div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="assets/app-shell.js"></script>
+<script>
+const API = window.APP_API;
+const token = localStorage.getItem("access_token");
+
+async function taramaBaslat() {
+  const url = document.getElementById("website_url").value.trim();
+  const durumDiv = document.getElementById("durum");
+  const sonucDiv = document.getElementById("sonuclar");
+  sonucDiv.innerHTML = "";
+
+  if (!url) { durumDiv.textContent = "Web sitesi adresi girin."; return; }
+  durumDiv.textContent = "Tarama olusturuluyor...";
+
+  const lookupResp = await fetch(`${API}/api/m4/lookups`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ website_url: url }),
+  });
+  const lookup = await lookupResp.json();
+
+  durumDiv.textContent = `Taraniyor (robots.txt kontrol ediliyor, sayfalar cekiliyor, birkac saniye surebilir)...`;
+
+  const runResp = await fetch(`${API}/api/m4/lookups/${lookup.id}/run`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const sonuclar = await runResp.json();
+
+  if (sonuclar.length === 0) {
+    durumDiv.textContent = `Hicbir e-posta bulunamadi (site robots.txt ile engelliyor olabilir, JS-tabanli bir site olabilir, ya da gercekten acik mail paylasmiyor olabilir).`;
+    return;
+  }
+
+  durumDiv.innerHTML = `${sonuclar.length} e-posta bulundu. ` +
+    `<a class="link excel-link" href="#" id="excel-link">Excel olarak indir &#8595;</a>`;
+
+  const tablo = document.createElement("table");
+  tablo.innerHTML = `<tr><th>E-posta</th><th>Tur</th><th>Bulundugu Sayfa</th></tr>` +
+    sonuclar.map(s => `<tr>
+      <td>${s.email}</td>
+      <td><span class="badge ${s.siniflandirma === 'yetkili' ? 'badge-success' : 'badge-neutral'}">${s.siniflandirma}</span></td>
+      <td style="font-size:.7rem;color:var(--ink-faint);">${s.kaynak_sayfa}</td>
+    </tr>`).join("");
+  sonucDiv.appendChild(tablo);
+
+  document.getElementById("excel-link").addEventListener("click", async (e) => {
+    e.preventDefault();
+    const excelResp = await fetch(`${API}/api/m4/lookups/${lookup.id}/results/excel`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const blob = await excelResp.blob();
+    const blobUrl = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = `mail_tarama_${lookup.id}.xlsx`;
+    a.click();
+    window.URL.revokeObjectURL(blobUrl);
+  });
+}
+</script>
+</body>
+</html>

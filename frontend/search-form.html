@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cok Dilli Urun Arama | Dis Ticaret Istihbarat</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body class="app">
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="app-main">
+    <header class="topbar">
+      <h1 class="page-title">Cok Dilli Urun Arama</h1>
+      <p class="page-desc">OEM/GTIP koduna ve coklu dildeki urun adina gore hedef ulkede tedarikci/rakip taramasi yapin.</p>
+    </header>
+    <main class="content">
+      <div class="card">
+        <h2 style="font-size:.95rem;">Yeni proje</h2>
+
+        <label>OEM No</label>
+        <input id="oem_no" placeholder="orn: OEM-45678">
+
+        <label>GTIP (H.S Code) No</label>
+        <input id="gtip_no" placeholder="orn: 8708.30">
+
+        <label>Parcanin Turkce ismi</label>
+        <input id="parca_adi_tr">
+        <label>Parcanin Ingilizce ismi</label>
+        <input id="parca_adi_en">
+        <label>Parcanin Ispanyolca ismi</label>
+        <input id="parca_adi_es">
+        <label>Parcanin Rusca ismi</label>
+        <input id="parca_adi_ru">
+        <label>Parcanin Arapca ismi</label>
+        <input id="parca_adi_ar">
+        <label>Parcanin Fransizca ismi</label>
+        <input id="parca_adi_fr">
+        <label>Parcanin Almanca ismi</label>
+        <input id="parca_adi_de">
+
+        <label>Aranacak ulke kodu (zorunlu, orn: DE, RU, US)</label>
+        <input id="hedef_ulke_kodu" placeholder="DE">
+
+        <label>Aranacak uzanti (opsiyonel, orn: de, ru, com.tr)</label>
+        <input id="hedef_uzanti">
+
+        <label>Rakip firma isimleri (virgulle ayirin, opsiyonel)</label>
+        <input id="rakip_isimleri" placeholder="orn: Bosch, Ferodo">
+
+        <label>Urun resmi (opsiyonel - once proje olusur, sonra resim yuklenir)</label>
+        <input id="urun_resmi" type="file" accept="image/*">
+
+        <button class="btn btn-primary" style="margin-top:1.4rem;" onclick="aramaBaslat()">Proje Olustur ve Aramayi Baslat</button>
+        <div id="sonuc" class="status-line"></div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="assets/app-shell.js"></script>
+<script>
+const API = window.APP_API;
+const token = localStorage.getItem("access_token");
+
+async function aramaBaslat() {
+  const sonucDiv = document.getElementById("sonuc");
+  sonucDiv.textContent = "Proje olusturuluyor...";
+
+  const body = {
+    oem_no: val("oem_no"), gtip_no: val("gtip_no"),
+    parca_adi_tr: val("parca_adi_tr"), parca_adi_en: val("parca_adi_en"),
+    parca_adi_es: val("parca_adi_es"), parca_adi_ru: val("parca_adi_ru"),
+    parca_adi_ar: val("parca_adi_ar"), parca_adi_fr: val("parca_adi_fr"),
+    parca_adi_de: val("parca_adi_de"),
+    hedef_ulke_kodu: val("hedef_ulke_kodu"),
+    hedef_uzanti: val("hedef_uzanti"),
+    rakip_isimleri: val("rakip_isimleri"),
+  };
+
+  const projeResp = await fetch(`${API}/api/m2/projects`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(body),
+  });
+
+  if (!projeResp.ok) {
+    sonucDiv.textContent = "Hata: proje olusturulamadi. Ulke kodu girdiniz mi?";
+    return;
+  }
+  const proje = await projeResp.json();
+
+  const resimInput = document.getElementById("urun_resmi");
+  if (resimInput.files.length > 0) {
+    const formData = new FormData();
+    formData.append("file", resimInput.files[0]);
+    await fetch(`${API}/api/m2/projects/${proje.id}/images`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+  }
+
+  sonucDiv.textContent = `Proje #${proje.id} olusturuldu. Arama calistiriliyor...`;
+
+  const runResp = await fetch(`${API}/api/m2/projects/${proje.id}/run`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  let sonuclar = await runResp.json();
+
+  if (resimInput.files.length > 0) {
+    const gorselResp = await fetch(`${API}/api/m2/projects/${proje.id}/run-image-search`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const gorselSonuclar = await gorselResp.json();
+    sonuclar = sonuclar.concat(gorselSonuclar);
+  }
+
+  sonucDiv.innerHTML = `Proje #${proje.id} - ${sonuclar.length} sonuc bulundu.<br>` +
+    `<a class="link excel-link" href="#" id="excel-link">Excel olarak indir &#8595;</a>`;
+
+  document.getElementById("excel-link").addEventListener("click", async (e) => {
+    e.preventDefault();
+    const excelResp = await fetch(`${API}/api/m2/projects/${proje.id}/results/excel`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const blob = await excelResp.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `proje_${proje.id}_sonuclar.xlsx`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  });
+}
+
+function val(id) {
+  const v = document.getElementById(id).value.trim();
+  return v === "" ? null : v;
+}
+</script>
+</body>
+</html>

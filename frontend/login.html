@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Giris Yap | Dis Ticaret Istihbarat</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<div class="auth-page">
+
+  <div class="auth-side">
+    <svg class="route-graphic" viewBox="0 0 500 700" xmlns="http://www.w3.org/2000/svg">
+      <path d="M 40 60 Q 200 140 120 280 T 300 460 T 200 650" stroke="#EAF2F5" stroke-width="1" fill="none" stroke-dasharray="2 10" opacity=".5"/>
+      <circle cx="40" cy="60" r="3" fill="#B3801F"/>
+      <circle cx="120" cy="280" r="3" fill="#B3801F"/>
+      <circle cx="300" cy="460" r="3" fill="#B3801F"/>
+      <circle cx="200" cy="650" r="3" fill="#B3801F"/>
+    </svg>
+    <div class="side-top">
+      <svg viewBox="0 0 34 34" width="32" height="32"><circle cx="17" cy="17" r="16" fill="#ffffff" fill-opacity=".08"/><circle cx="17" cy="17" r="16" fill="none" stroke="#B3801F" stroke-width="1"/><path d="M17 6v22M6 17h22" stroke="#EAF2F5" stroke-width="1"/><circle cx="17" cy="17" r="4.2" fill="none" stroke="#B3801F" stroke-width="1.4"/><path d="M17 12.8 18 16l3.2 1-3.2 1-1 3.2-1-3.2-3.2-1 3.2-1Z" fill="#B3801F"/></svg>
+      <div class="brand-text"><strong style="color:#fff;">Dis Ticaret</strong><small style="color:#cfe0e6;">Istihbarat Platformu</small></div>
+    </div>
+    <div class="side-quote">
+      <p>"Haritadan firma bulmak, yetkili maili bulmak ve kampanya gondermek artik tek panelde."</p>
+      <span>Ihracat ekipleri icin kurulmus, tek bir yerden yonetilen istihbarat araci.</span>
+    </div>
+  </div>
+
+  <div class="auth-form-wrap">
+    <div class="auth-card">
+      <h1>Hesabiniza giris yapin</h1>
+      <p class="sub">Devam etmek icin bilgilerinizi girin.</p>
+
+      <label for="kullanici-adi">Kullanici adi</label>
+      <input id="kullanici-adi" type="text" placeholder="Kullanici adinizi girin" autocomplete="username">
+
+      <label for="sifre">Sifre</label>
+      <input id="sifre" type="password" placeholder="Sifrenizi girin" autocomplete="current-password">
+
+      <button class="btn btn-primary" style="margin-top:1.4rem;" onclick="girisYap()" id="giris-btn">Giris Yap</button>
+      <div id="login-hata"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = "http://localhost:8000";
+
+async function girisYap() {
+  const kullaniciAdi = document.getElementById("kullanici-adi").value.trim();
+  const sifre = document.getElementById("sifre").value;
+  const hataKutusu = document.getElementById("login-hata");
+  const btn = document.getElementById("giris-btn");
+  hataKutusu.classList.remove("gorunur");
+
+  if (!kullaniciAdi || !sifre) {
+    hataKutusu.textContent = "Kullanici adi ve sifre gerekli.";
+    hataKutusu.classList.add("gorunur");
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = "Giris yapiliyor...";
+
+  try {
+    const form = new URLSearchParams();
+    form.append("username", kullaniciAdi);
+    form.append("password", sifre);
+
+    const resp = await fetch(`${API}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: form,
+    });
+
+    if (!resp.ok) {
+      hataKutusu.textContent = "Kullanici adi veya sifre hatali.";
+      hataKutusu.classList.add("gorunur");
+      return;
+    }
+
+    const data = await resp.json();
+    localStorage.setItem("access_token", data.access_token);
+    window.location.href = "dashboard.html";
+  } catch (e) {
+    hataKutusu.textContent = "Sunucuya baglanilamadi. Backend'in calistigindan emin olun.";
+    hataKutusu.classList.add("gorunur");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Giris Yap";
+  }
+}
+
+document.getElementById("sifre").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") girisYap();
+});
+</script>
+</body>
+</html>

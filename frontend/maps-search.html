@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Haritalarda Firma Arama | Dis Ticaret Istihbarat</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body class="app">
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="app-main">
+    <header class="topbar">
+      <h1 class="page-title">Haritalarda Firma Arama</h1>
+      <p class="page-desc">Hedef ulke ve anahtar kelimeye gore Google Haritalar uzerinden potansiyel firma listesi cikarin.</p>
+    </header>
+    <main class="content">
+      <div class="card">
+        <label>Hedef ulke (orn: United Kingdom, Germany)</label>
+        <input id="hedef_ulke" placeholder="United Kingdom">
+
+        <label>Anahtar kelime(ler) - virgulle ayirin</label>
+        <input id="anahtar_kelimeler" placeholder="automotive, spare parts">
+
+        <button class="btn btn-primary" style="margin-top:1.4rem;" onclick="aramaBaslat()">Ara ve Excel Hazirla</button>
+        <div id="sonuc" class="status-line"></div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="assets/app-shell.js"></script>
+<script>
+const API = window.APP_API;
+const token = localStorage.getItem("access_token");
+
+async function aramaBaslat() {
+  const sonucDiv = document.getElementById("sonuc");
+  const ulke = document.getElementById("hedef_ulke").value.trim();
+  const kelimeler = document.getElementById("anahtar_kelimeler").value.trim();
+
+  if (!ulke || !kelimeler) {
+    sonucDiv.textContent = "Ulke ve en az bir anahtar kelime girin.";
+    return;
+  }
+
+  sonucDiv.textContent = "Proje olusturuluyor...";
+
+  const projeResp = await fetch(`${API}/api/m3/projects`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ hedef_ulke: ulke, anahtar_kelimeler: kelimeler, detay_getir: true }),
+  });
+  const proje = await projeResp.json();
+
+  sonucDiv.textContent = `Proje #${proje.id} olusturuldu. Google Haritalar taraniyor...`;
+
+  const runResp = await fetch(`${API}/api/m3/projects/${proje.id}/run`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const sonuclar = await runResp.json();
+
+  sonucDiv.innerHTML = `Proje #${proje.id} - ${sonuclar.length} firma bulundu.<br>` +
+    `<a class="link excel-link" href="#" id="excel-link">Excel olarak indir &#8595;</a>`;
+
+  document.getElementById("excel-link").addEventListener("click", async (e) => {
+    e.preventDefault();
+    const excelResp = await fetch(`${API}/api/m3/projects/${proje.id}/results/excel`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const blob = await excelResp.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `harita_proje_${proje.id}.xlsx`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  });
+}
+</script>
+</body>
+</html>

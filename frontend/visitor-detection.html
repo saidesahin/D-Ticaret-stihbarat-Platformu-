@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ziyaretci Tespiti | Dis Ticaret Istihbarat</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body class="app">
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="app-main">
+    <header class="topbar">
+      <h1 class="page-title">Ziyaretci Tespiti</h1>
+      <p class="page-desc">Kendi web sitenizi (index.html) ziyaret eden olasi alicilarin konum ve IP tabanli tespit sonuclari.</p>
+    </header>
+    <main class="content" style="max-width:980px;">
+
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap;">
+          <div>
+            <h2 style="font-size:1rem;">Son ziyaretler</h2>
+            <p style="font-size:.8rem; color:var(--ink-soft); margin:.2rem 0 0 0;">En yeni kayit en ustte.</p>
+          </div>
+          <a class="link excel-link" id="excel-link" href="#" style="margin:0;">Excel olarak indir &#8595;</a>
+        </div>
+        <div id="durum" class="status-line"></div>
+        <table id="ziyaret-tablosu" style="display:none;">
+          <thead>
+            <tr>
+              <th>Tarih</th>
+              <th>Ulke / Sehir</th>
+              <th>IP / Kurum tahmini</th>
+              <th>Izin</th>
+              <th>Yakindaki olasi firmalar</th>
+              <th>Sayfa</th>
+            </tr>
+          </thead>
+          <tbody id="ziyaret-govde"></tbody>
+        </table>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<script src="assets/app-shell.js"></script>
+<script>
+const API = window.APP_API;
+const token = localStorage.getItem("access_token");
+
+async function ziyaretleriYukle() {
+  const durum = document.getElementById("durum");
+  durum.textContent = "Yukleniyor...";
+
+  try {
+    const resp = await fetch(`${API}/api/m1/visits`, { headers: { Authorization: `Bearer ${token}` } });
+    if (resp.status === 401) { window.location.href = "login.html"; return; }
+    if (!resp.ok) throw new Error("liste alinamadi");
+
+    const visits = await resp.json();
+    if (visits.length === 0) {
+      durum.textContent = "Henuz ziyaret kaydi yok. Kendi siteniz ziyaret edildikce burada listelenecek.";
+      return;
+    }
+
+    durum.textContent = `${visits.length} ziyaret bulundu.`;
+    const govde = document.getElementById("ziyaret-govde");
+    govde.innerHTML = "";
+
+    visits.forEach(v => {
+      const tarih = new Date(v.created_at).toLocaleString("tr-TR");
+      let firmalar = "-";
+      if (v.nearby_company_guess) {
+        try { firmalar = JSON.parse(v.nearby_company_guess).join(", ") || "-"; }
+        catch (e) { firmalar = v.nearby_company_guess; }
+      }
+      const izinRozeti = v.consent_given
+        ? '<span class="badge badge-success">konum paylasti</span>'
+        : '<span class="badge badge-neutral">sadece IP</span>';
+
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${tarih}</td>
+        <td>${[v.country, v.city].filter(Boolean).join(" / ") || "-"}</td>
+        <td>${v.ip_address}<br><span style="color:var(--ink-faint);">${v.org_guess || ""}</span></td>
+        <td>${izinRozeti}</td>
+        <td>${firmalar}</td>
+        <td style="max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${v.page_url || "-"}</td>
+      `;
+      govde.appendChild(tr);
+    });
+
+    document.getElementById("ziyaret-tablosu").style.display = "table";
+  } catch (e) {
+    durum.textContent = "Ziyaret listesi alinirken hata olustu.";
+  }
+}
+
+document.getElementById("excel-link").addEventListener("click", (e) => {
+  e.preventDefault();
+  fetch(`${API}/api/m1/visits/excel`, { headers: { Authorization: `Bearer ${token}` } })
+    .then(r => r.blob())
+    .then(blob => {
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = "ziyaretci_raporu.xlsx";
+      document.body.appendChild(a); a.click(); a.remove();
+    });
+});
+
+ziyaretleriYukle();
+</script>
+</body>
+</html>

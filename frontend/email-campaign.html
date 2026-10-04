@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Toplu Mail Kampanyasi | Dis Ticaret Istihbarat</title>
+<link rel="stylesheet" href="assets/style.css">
+<style>
+  .gonderildi { color:var(--success); font-weight:600; }
+  .basarisiz { color:var(--danger); font-weight:600; }
+  .atlandi_suppression { color:var(--ink-faint); font-weight:600; }
+  .beklemede { color:var(--gold); font-weight:600; }
+  .footer-onizleme { background:var(--line-soft); border:1px dashed var(--line); padding:.7rem; border-radius:8px; font-size:.72rem; color:var(--ink-faint); margin-top:.5rem; line-height:1.4; }
+</style>
+</head>
+<body class="app">
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="app-main">
+    <header class="topbar">
+      <h1 class="page-title">Toplu Mail Kampanyasi</h1>
+      <p class="page-desc">Bulunan e-posta listelerine toplu ve kisisellestirilmis kampanya gonderin.</p>
+    </header>
+    <main class="content">
+      <div class="card">
+        <div class="alert alert-warn">
+          Bu modul hukuki risk tasir (spam mevzuati). Gonderen kimligi, fiziksel
+          adres ve abonelikten cikma linki HER mailde ZORUNLU ve otomatik eklenir,
+          kaldirilamaz.
+        </div>
+
+        <label>E-posta konusu</label>
+        <input id="konu" placeholder="Urunlerimiz Hakkinda Bilgi">
+
+        <label>E-posta icerigi (HTML)</label>
+        <textarea id="govde_html" placeholder="&lt;p&gt;Merhaba, ...&lt;/p&gt;"></textarea>
+
+        <label>Gonderen adi</label>
+        <input id="gonderen_adi" placeholder="Ornek Ihracat A.S.">
+
+        <label>Gonderen e-posta</label>
+        <input id="gonderen_email" placeholder="info@ornekihracat.com">
+
+        <label>Fiziksel adres (zorunlu)</label>
+        <input id="fiziksel_adres" placeholder="Fabrika Mah. No:1, Konya">
+
+        <div class="footer-onizleme">
+          Her mailin sonuna otomatik eklenecek: "Bu e-posta [Gonderen Adi] tarafindan
+          gonderilmistir. Adres: [Fiziksel Adres]. Abonelikten cikmak icin: [link]"
+        </div>
+
+        <label>Alici e-postalari (virgul veya yeni satirla ayirin)</label>
+        <textarea id="aliciler" placeholder="firma1@ornek.com, firma2@ornek.com"></textarea>
+
+        <button class="btn btn-primary" style="margin-top:1.2rem;" onclick="kampanyaOlustur()">1) Kampanya Olustur + Alicileri Ekle</button>
+        <button class="btn btn-danger" style="margin-top:.6rem;" onclick="gonder()" id="gonder-btn" disabled>2) Gonderimi Baslat (en fazla 20)</button>
+
+        <div id="durum" class="status-line"></div>
+        <table id="sonuc-tablosu" style="display:none;">
+          <thead><tr><th>E-posta</th><th>Durum</th><th>Hata</th></tr></thead>
+          <tbody id="sonuc-govde"></tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="assets/app-shell.js"></script>
+<script>
+const API = window.APP_API;
+const token = localStorage.getItem("access_token");
+let aktifKampanyaId = null;
+
+async function kampanyaOlustur() {
+  const durum = document.getElementById("durum");
+  const body = {
+    konu: document.getElementById("konu").value,
+    govde_html: document.getElementById("govde_html").value,
+    gonderen_adi: document.getElementById("gonderen_adi").value,
+    gonderen_email: document.getElementById("gonderen_email").value,
+    fiziksel_adres: document.getElementById("fiziksel_adres").value,
+  };
+
+  const resp = await fetch(`${API}/api/m5/campaigns`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(body),
+  });
+
+  if (!resp.ok) {
+    durum.textContent = "Hata: fiziksel adres ve gonderen bilgileri zorunludur.";
+    return;
+  }
+  const kampanya = await resp.json();
+  aktifKampanyaId = kampanya.id;
+
+  const emailListesi = document.getElementById("aliciler").value
+    .split(/[,\n]/).map(e => e.trim()).filter(Boolean);
+
+  await fetch(`${API}/api/m5/campaigns/${kampanya.id}/recipients`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ emails: emailListesi }),
+  });
+
+  durum.textContent = `Kampanya #${kampanya.id} olusturuldu, ${emailListesi.length} alici eklendi. Gonderime hazir.`;
+  document.getElementById("gonder-btn").disabled = false;
+}
+
+async function gonder() {
+  const durum = document.getElementById("durum");
+  durum.textContent = "Gonderiliyor...";
+
+  const resp = await fetch(`${API}/api/m5/campaigns/${aktifKampanyaId}/send`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const sonuclar = await resp.json();
+
+  durum.textContent = `Gonderim tamamlandi (${sonuclar.length} alici islendi).`;
+
+  const govde = document.getElementById("sonuc-govde");
+  govde.innerHTML = "";
+  sonuclar.forEach(s => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${s.email}</td><td class="${s.durum}">${s.durum}</td><td>${s.hata_mesaji || "-"}</td>`;
+    govde.appendChild(tr);
+  });
+  document.getElementById("sonuc-tablosu").style.display = "table";
+}
+</script>
+</body>
+</html>

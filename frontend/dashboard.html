@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Genel Bakis | Dis Ticaret Istihbarat</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body class="app">
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="app-main">
+    <header class="topbar">
+      <p class="eyebrow">Panel</p>
+      <h1 class="page-title" id="hosgeldin-baslik">Hosgeldin</h1>
+      <p class="page-desc">Modullerinize asagidan veya sol menuden erisebilirsiniz.</p>
+    </header>
+    <main class="content" style="max-width:920px;">
+      <div class="stat-grid" id="stat-grid"></div>
+      <div class="module-grid" id="moduller"></div>
+    </main>
+  </div>
+</div>
+
+<script src="assets/app-shell.js"></script>
+<script>
+const API = window.APP_API;
+const token = localStorage.getItem("access_token");
+
+const IKON_RENK = {
+  genel:  "#0B4F6C",
+  harita: "#0B4F6C",
+  mail:   "#0F7B57",
+  gonder: "#6D3FA0",
+  arama:  "#0E7C9C",
+  grafik: "#B3801F",
+  goz:    "#5B6472",
+  grid:   "#5B6472",
+};
+
+const ACIKLAMA = {
+  harita: "Ulke ve anahtar kelimeye gore Google Haritalar'dan potansiyel firma listesi cikarin.",
+  mail:   "Bir firmanin web sitesinden yetkili/genel e-posta adreslerini tespit edin.",
+  gonder: "Bulunan e-posta listelerine toplu, kisisellestirilmis kampanya gonderin.",
+  arama:  "Coklu dilde anahtar kelimeyle uluslararasi urun/tedarikci aramasi yapin.",
+  goz:    "Kendi web sitenizi ziyaret eden potansiyel alicilari ve firmalari gorun.",
+  grafik: "Tum modullerdeki aktiviteyi tek raporda ozetleyin.",
+  grid:   "Yeni eklenecek moduller burada listelenecek.",
+};
+
+const IKON_SVG = {
+  genel: `<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>`,
+  harita: `<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0Z"/><circle cx="12" cy="10" r="3"/></svg>`,
+  mail: `<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/></svg>`,
+  gonder: `<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>`,
+  arama: `<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>`,
+  grafik: `<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>`,
+  goz: `<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/></svg>`,
+  grid: `<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>`,
+};
+
+async function veriYukle() {
+  const resp = await fetch(`${API}/api/dashboard`, { headers: { Authorization: `Bearer ${token}` } });
+  if (resp.status === 401) { localStorage.removeItem("access_token"); window.location.href = "login.html"; return; }
+  const data = await resp.json();
+
+  document.getElementById("hosgeldin-baslik").textContent = `Hosgeldin, ${data.hosgeldin}`;
+
+  const aktifSayisi = data.aktif_moduller.filter(m => m.durum === "aktif").length;
+  const yakindaSayisi = data.aktif_moduller.length - aktifSayisi;
+  document.getElementById("stat-grid").innerHTML = `
+    <div class="stat-card"><div class="stat-num">${aktifSayisi}</div><div class="stat-label">Aktif modul</div></div>
+    <div class="stat-card"><div class="stat-num">${yakindaSayisi}</div><div class="stat-label">Yakinda gelecek</div></div>
+    <div class="stat-card"><div class="stat-num">${data.firma || "-"}</div><div class="stat-label">Firma hesabi</div></div>
+  `;
+
+  const modulDiv = document.getElementById("moduller");
+  data.aktif_moduller.forEach(m => {
+    const aktifMi = m.durum === "aktif";
+    const renk = IKON_RENK[m.ikon] || "#5B6472";
+    const svg = IKON_SVG[m.ikon] || IKON_SVG.grid;
+    const aciklama = ACIKLAMA[m.ikon] || "";
+
+    const el = document.createElement(aktifMi && m.sayfa ? "a" : "div");
+    el.className = "module-card" + (aktifMi ? "" : " is-disabled");
+    if (aktifMi && m.sayfa) el.href = m.sayfa;
+    el.innerHTML = `
+      <div class="module-card-icon" style="background:${renk};">${svg}</div>
+      <div>
+        <h3>${m.ad} ${aktifMi ? "" : '<span class="badge badge-neutral" style="margin-left:.4rem;">yakinda</span>'}</h3>
+        <p>${aciklama}</p>
+      </div>
+    `;
+    modulDiv.appendChild(el);
+  });
+}
+
+veriYukle();
+</script>
+</body>
+</html>
