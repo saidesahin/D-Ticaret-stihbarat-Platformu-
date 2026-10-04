@@ -95,7 +95,6 @@ python -m pytest app/modules/m0_altyapi/tests -v
 - [x] Backend calisiyor, Swagger'da test edildi
 - [x] Frontend baglandi (login.html -> dashboard.html gercek token ile calisiyor)
 - [x] Otomatik testler yazildi (5/5 gecti)
-- [ ] main branch'e merge (bu adimi sen kendi git deponda yapacaksin)
 
 ---
 
@@ -164,7 +163,6 @@ istek atmaz (monkeypatch ile sahtelendi) - internetsiz ortamda da calisir.
 - [x] Backend calisiyor, gercek sunucu uzerinde uctan uca test edildi (Evet/Hayir/gecersiz-key)
 - [x] Frontend baglandi (gercek JS snippet, pop-up + cerez mantigi calisir halde)
 - [x] Otomatik testler yazildi (5/5 gecti, harici servisler sahtelendi)
-- [ ] main branch'e merge (senin git deponda)
 
 ---
 
@@ -189,7 +187,7 @@ Google/Bing/Yandex ile ilerledim, bunu musteriye/Yasin'e iletmen iyi olur.
 ### Yeni API anahtari gerekiyor (.env)
 
 ```
-SERPAPI_KEY=...   # https://serpapi.com - ucretsiz katman ayda 100 arama
+SERPAPI_KEY=...   
 ```
 
 Anahtar girilmezse sistem crash etmez, sadece bos sonuc listesi doner (test edildi).
@@ -219,7 +217,6 @@ python -m pytest app/modules -v
 - [x] Baskasinin projesine erisim engelleniyor (404, hem /run hem /results icin) - test edildi
 - [x] Otomatik testler yazildi (4/4 gecti, SerpAPI sahtelendi)
 - [x] Frontend baglandi (`frontend/search-form.html` - dokumandaki form alanlariyla birebir, gercek Excel indirme calisir halde)
-- [ ] main branch'e merge (senin git deponda)
 
 ### Modul 2 
 
@@ -273,12 +270,6 @@ python -m pytest app/modules -v
 - [x] Backend calisiyor, gercek sunucu uzerinde uctan uca test edildi (resim yukleme dahil, gercekten indirilebilir oldugu dogrulandi)
 - [x] Frontend baglandi (`search-form.html` - form + resim yukleme + Excel indirme calisir halde)
 - [x] Otomatik testler yazildi (18/18 gecti)
-- [ ] main branch'e merge (senin git deponda)
-
-## Sirada: Modul 3 - Haritalar
-
-Dokumandaki siraya gore sirada harita/firma arama modulu var (Google Places
-Nearby Search ile ulke+anahtar kelime bazli firma taramasi, Excel export).
 
 ---
 
@@ -329,7 +320,6 @@ python -m pytest app/modules -v
 - [x] Backend calisiyor, gercek sunucu uzerinde uctan uca test edildi
 - [x] Frontend baglandi (`maps-search.html` - form + Excel indirme calisir halde)
 - [x] Otomatik testler yazildi (5/5 gecti, Google Places sahtelendi)
-- [ ] main branch'e merge (senin git deponda)
 
 ---
 
@@ -391,7 +381,6 @@ python -m pytest app/modules -v
 - [x] Otomatik testler yazildi (7/7 gecti)
 - [x] Baskasinin taramasina erisim engelleniyor (404)
 - [x] Frontend baglandi (`email-lookup.html` - tarama + sonuc tablosu + Excel indirme calisir halde)
-- [ ] main branch'e merge (senin git deponda)
 
 ---
 
@@ -460,7 +449,6 @@ python -m pytest app/modules -v
 - [x] Abonelikten cikma linki gercekten sonraki gonderimi engelliyor - test edildi
 - [x] Frontend baglandi (`email-campaign.html` - 2 asamali form + sonuc tablosu calisir halde)
 - [x] Otomatik testler yazildi (7/7 gecti)
-- [ ] main branch'e merge (senin git deponda)
 
 
 
